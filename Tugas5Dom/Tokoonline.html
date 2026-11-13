@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toko Online - Latihan 5</title>
+<style>
+  :root { --bg:#f5f7fa; --ink:#1d2433; --muted:#667085; --brand:#0f766e; --brand-d:#0b5d57; --line:#e2e6ee; --danger:#c62828; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--brand); color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:1.25rem; }
+  #toggleCart { background:#fff; color:var(--brand); border:0; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; }
+  main { max-width:1100px; margin:20px auto; padding:0 16px; display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start; }
+  #search { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:1rem; margin-bottom:14px; }
+  #productList { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
+  .product { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:6px; }
+  .product h3 { margin:0; font-size:1rem; }
+  .product .harga { font-weight:700; color:var(--brand); }
+  .product .stok { font-size:.85rem; color:var(--muted); }
+  button { font:inherit; }
+  .btn-add { margin-top:auto; background:var(--brand); color:#fff; border:0; padding:8px; border-radius:8px; cursor:pointer; }
+  .btn-add:hover { background:var(--brand-d); }
+  #cartPanel { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; position:sticky; top:12px; }
+  #cartPanel h2 { margin:0 0 10px; font-size:1.1rem; }
+  #cartItems { list-style:none; margin:0; padding:0; }
+  #cartItems li { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .btn-remove { background:none; border:1px solid var(--danger); color:var(--danger); border-radius:6px; padding:2px 8px; cursor:pointer; }
+  .summary { margin:12px 0; font-size:.95rem; }
+  .summary strong { font-size:1.05rem; }
+  .actions { display:flex; gap:8px; }
+  .actions button { flex:1; padding:9px; border-radius:8px; border:0; cursor:pointer; color:#fff; }
+  #checkout { background:var(--brand); }
+  #emptyCart { background:var(--danger); }
+  #orderSummary { margin-top:14px; padding:12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; }
+  #orderSummary ul { margin:6px 0 0 18px; padding:0; }
+  .hidden { display:none; }
+  #noResult { color:var(--muted); }
+  @media (max-width: 800px) { main { grid-template-columns:1fr; } #cartPanel { position:static; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Toko Laptop Arfan Ganteng</h1>
+  <button id="toggleCart">Buka/Tutup Keranjang</button>
+</header>
+
+<main>
+  <section>
+    <input type="text" id="search" placeholder="Cari produk...">
+    <div id="productList"></div>
+    <p id="noResult" class="hidden">Tidak ada produk yang cocok.</p>
+  </section>
+
+  <aside id="cartPanel">
+    <h2>Keranjang Belanja</h2>
+    <ul id="cartItems"></ul>
+    <div class="summary">
+      <div>Jumlah item: <span id="cartCount">0</span></div>
+      <div>Total harga: <strong id="cartTotal">Rp 0</strong></div>
+    </div>
+    <div class="actions">
+      <button id="checkout">Checkout</button>
+      <button id="emptyCart">Kosongkan Keranjang</button>
+    </div>
+    <div id="orderSummary" class="hidden"></div>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script>
+// 1. Data produk: array of object (minimal 6 produk)
+var products = [
+  { id: 1, nama: "Laptop Gaming", harga: 12500000, stok: 5 },
+  { id: 2, nama: "Mouse Wireless", harga: 150000, stok: 10 },
+  { id: 3, nama: "Keyboard Mekanik", harga: 450000, stok: 3 },
+  { id: 4, nama: "Headset", harga: 300000, stok: 0 },
+  { id: 5, nama: "Monitor 24 inch", harga: 1800000, stok: 4 },
+  { id: 6, nama: "Flashdisk 64GB", harga: 90000, stok: 20 }
+];
+
+var cart = []; // { uid, id, nama, harga }
+
+function rupiah(n) { return "Rp " + n.toLocaleString("id-ID"); }
+
+// Tampilkan produk: perulangan + createElement, createTextNode, appendChild
+function renderProducts() {
+  var list = document.getElementById("productList");
+  for (var i = 0; i < products.length; i++) {
+    var p = products[i];
+
+    var card = document.createElement("div");
+    card.className = "product";
+    card.setAttribute("data-nama", p.nama.toLowerCase());
+
+    var h3 = document.createElement("h3");
+    h3.appendChild(document.createTextNode(p.nama));
+
+    var harga = document.createElement("div");
+    harga.className = "harga";
+    harga.appendChild(document.createTextNode(rupiah(p.harga)));
+
+    var stok = document.createElement("div");
+    stok.className = "stok";
+    stok.appendChild(document.createTextNode("Stok: "));
+    var stokNum = document.createElement("span");
+    stokNum.id = "stok-" + p.id;
+    stokNum.appendChild(document.createTextNode(p.stok));
+    stok.appendChild(stokNum);
+
+    var btn = document.createElement("button");
+    btn.className = "btn-add";
+    btn.setAttribute("data-id", p.id);
+    btn.appendChild(document.createTextNode("Tambah ke Keranjang"));
+
+    card.appendChild(h3);
+    card.appendChild(harga);
+    card.appendChild(stok);
+    card.appendChild(btn);
+    list.appendChild(card);
+  }
+}
+
+renderProducts();
+
+// 6. Semua kode jQuery di dalam $(document).ready()
+$(document).ready(function () {
+
+  function updateSummary() {
+    var total = 0;
+    for (var i = 0; i < cart.length; i++) total += cart[i].harga;
+    $("#cartCount").text(cart.length);
+    $("#cartTotal").text(rupiah(total));
+  }
+
+  function findProduct(id) {
+    for (var i = 0; i < products.length; i++) if (products[i].id === id) return products[i];
+  }
+
+  // Tambah ke keranjang
+  $("#productList").on("click", ".btn-add", function () {
+    var id = parseInt($(this).attr("data-id"), 10);
+    var p = findProduct(id);
+
+    if (p.stok <= 0) {
+      alert("Maaf, stok " + p.nama + " habis!");
+      return;
+    }
+
+    p.stok--;
+    $("#stok-" + p.id).text(p.stok);
+
+    var uid = Date.now() + Math.random();
+    cart.push({ uid: uid, id: p.id, nama: p.nama, harga: p.harga });
+
+    var $li = $("<li></li>").attr("data-uid", uid).hide();
+    $li.append($("<span></span>").text(p.nama + " - " + rupiah(p.harga)));
+    $li.append($("<button class='btn-remove'>Hapus</button>"));
+    $("#cartItems").append($li);   // append()
+    $li.fadeIn(400);                // fadeIn()
+
+    updateSummary();
+  });
+
+  // Hapus satu item
+  $("#cartItems").on("click", ".btn-remove", function () {
+    var $li = $(this).closest("li");
+    var uid = parseFloat($li.attr("data-uid"));
+
+    if (!confirm("Hapus item ini dari keranjang?")) return;
+
+    $li.fadeOut(400, function () {  // fadeOut()
+      $(this).remove();              // remove()
+    });
+
+    for (var i = 0; i < cart.length; i++) {
+      if (cart[i].uid === uid) {
+        var p = findProduct(cart[i].id);
+        p.stok++;
+        $("#stok-" + p.id).text(p.stok);
+        cart.splice(i, 1);
+        break;
+      }
+    }
+    updateSummary();
+  });
+
+  // Kosongkan keranjang
+  $("#emptyCart").on("click", function () {
+    if (cart.length === 0) { alert("Keranjang sudah kosong."); return; }
+    if (!confirm("Yakin ingin mengosongkan keranjang?")) return;
+
+    for (var i = 0; i < cart.length; i++) {
+      var p = findProduct(cart[i].id);
+      p.stok++;
+      $("#stok-" + p.id).text(p.stok);
+    }
+    cart = [];
+    $("#cartItems").empty();         // empty()
+    $("#orderSummary").addClass("hidden");
+    updateSummary();
+  });
+
+  // Buka/tutup panel keranjang
+  $("#toggleCart").on("click", function () {
+    $("#cartPanel").animate({ opacity: "toggle", height: "toggle" }, 400);
+  });
+
+  // Checkout
+  $("#checkout").on("click", function () {
+    if (cart.length === 0) { alert("Keranjang masih kosong."); return; }
+
+    var nama = prompt("Masukkan nama pembeli:");
+    if (nama === null || $.trim(nama) === "") { alert("Nama pembeli wajib diisi."); return; }
+
+    var total = 0;
+    var $ul = $("<ul></ul>");
+    for (var i = 0; i < cart.length; i++) {
+      total += cart[i].harga;
+      $ul.append($("<li></li>").text(cart[i].nama + " - " + rupiah(cart[i].harga)));
+    }
+
+    $("#orderSummary").empty()
+      .append($("<strong></strong>").text("Ringkasan Pesanan"))
+      .append($("<div></div>").text("Nama: " + $.trim(nama)))
+      .append($("<div></div>").text("Daftar item:"))
+      .append($ul)
+      .append($("<div></div>").html("<strong>Total: " + rupiah(total) + "</strong>"))
+      .removeClass("hidden").hide().fadeIn(400);
+
+    cart = [];
+    $("#cartItems").empty();
+    updateSummary();
+  });
+
+  // Pencarian produk: val() dan toggle()
+  $("#search").on("keyup input", function () {
+    var kata = $(this).val().toLowerCase();
+    var ada = 0;
+    $(".product").each(function () {
+      var cocok = $(this).attr("data-nama").indexOf(kata) !== -1;
+      $(this).toggle(cocok);
+      if (cocok) ada++;
+    });
+    $("#noResult").toggleClass("hidden", ada > 0);
+  });
+
+});
+</script>
+</body>
+</html>
